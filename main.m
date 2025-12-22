@@ -101,7 +101,8 @@ disp('bTg')
 disp(bTg)
 
 
-%% Ex 2.1
+%% Ex 2.1 Cartesian error
+
 % we need to find the cartesian error. It is a 6x1 that has the orientation error
 % and the position error. 
 
@@ -136,7 +137,7 @@ disp("Cartesian error: e = [e_position, e_orientation]'")
 disp(cartesian_error)
 
 
-%% Ex 2.2
+%% Ex 2.2 Desired angular the linear velocities
 
 % control proportional gain
 k_a = 0.8;
@@ -159,7 +160,22 @@ disp(desired_linear)
 
 
 
+%% Ex 2.3 Compute the desired joint velocities
 
+% we chose to do it with the minimum norm solution to inverse kinematic
+% problem
+J = km.getJacobianOfJointWrtBase(n_joint);
+
+% we do it with two methods. One is the pseudo inverse of matlab. The
+% second is the right pseudoinverse done manually
+q_dot = pinv(J) * [desired_linear; desired_angular];
+q_dot1 = (J' * inv(J*J')) * [desired_linear; desired_angular];
+
+disp("q_dot:")
+disp(q_dot)
+
+disp("q_dot1:")
+disp(q_dot1)
 
 %% Initialize control loop 
 

@@ -18,42 +18,38 @@ classdef kinematicModel < handle
             end
         end
 
-        function bJi = getJacobianOfJointWrtBase(self, i)
-            %% getJacobianOfJointWrtBase function
-            % This method computes the Jacobian matrix bJi of joint i wrt base.
-            % Inputs:
-            % i : joint indnex ;
 
-            % The function returns:
-            % bJi
-            
-            %TO DO
-             if i > self.gm.jointNumber || i < 0
+
+
+
+%% we change this function bc now we have to compute for the velocities of the tool
+% we do not care for the joint velocity anymore. This is bc our jacobian
+% needs to map joint velocities to the motion of the tool, and not the join
+% motion. 
+        function bJ = getJacobianOfJointWrtBase(self, i)
+
+            if i < 1 || i > self.gm.jointNumber
                 error("Index out of bounds");
             end
-
-            bJi = zeros(6, self.gm.jointNumber);
-
-            % transform of link i wrt base
-            bTi = self.gm.getTransformWrtBase(0, i);
-            p_target = bTi(1:3, 4);
-
-            % iterate joints from base to link i
+        
+            bJ = zeros(6, self.gm.jointNumber);
+        
+            % tool position 
+            bTt = self.gm.getToolTransformWrtBase();
+            p_t = bTt(1:3,4);
+        
             for j = 1:i
-
-                bTj = self.gm.getTransformWrtBase(0, j);
-                z_j = bTj(1:3, 3);
-                p_j = bTj(1:3, 4);
-
-                p_diff = p_target - p_j;
-
-                if self.gm.jointType(j) == 0      % revolute
-                    bJi(1:3, j) = cross(z_j, p_diff);
-                    bJi(4:6, j) = z_j;
-
-                elseif self.gm.jointType(j) == 1  % prismatic
-                    bJi(1:3, j) = z_j;
-                    bJi(4:6, j) = [0;0;0];
+                bTj = self.gm.getTransformWrtBase(j);
+        
+                z_j = bTj(1:3,3);
+                p_j = bTj(1:3,4);
+        
+                if self.gm.jointType(j) == 0  % revolute
+                    bJ(1:3,j) = cross(z_j, p_t - p_j); % we replace with the position of the tool
+                    bJ(4:6,j) = z_j;
+                else                          % prismatic
+                    bJ(1:3,j) = z_j;
+                    bJ(4:6,j) = [0;0;0];
                 end
             end
         end
@@ -67,7 +63,7 @@ classdef kinematicModel < handle
         % The function update:
         % - J: end-effector jacobian matrix
             % TO DO
-             self.J = self.getJacobianOfLinkWrtBase(self.gm.jointNumber);
+             self.J = self.getJacobianOfJointWrtBase(self.gm.jointNumber);
         end
     end
 end
