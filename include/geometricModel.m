@@ -26,7 +26,7 @@ classdef geometricModel < handle
                 self.jointType = jointType;
                 self.jointNumber = length(jointType);
                 self.q = zeros(self.jointNumber,1);
-                self.eTt;
+                self.eTt =  eTt;
             else
                 error('Not enough input arguments (iTj_0) (jointType)')
             end
