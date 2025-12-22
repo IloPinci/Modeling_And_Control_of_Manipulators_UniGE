@@ -18,21 +18,21 @@ q = [pi/2, -pi/4, 0, -pi/4, 0, 0.15, pi/4]';
 
 % our rotation matrix is Yaw-Pitch-Roll so: R = RzRyRx
 
-psi = pi/10;
-theta = 0;
-phi = pi/6;
+psi_t = pi/10;
+theta_t = 0;
+phi_t = pi/6;
 
-Rz = [cos(psi) -sin(psi)  0;
-      sin(psi) cos(psi)   0;
+Rz = [cos(psi_t) -sin(psi_t)  0;
+      sin(psi_t) cos(psi_t)   0;
          0        0       1];  %yaw
 
-Ry = [cos(theta)  0   sin(theta);
+Ry = [cos(theta_t)  0   sin(theta_t);
           0       1       0;
-      -sin(theta) 0   cos(theta)]; %pitch
+      -sin(theta_t) 0   cos(theta_t)]; %pitch
 
 Rx = [ 1       0            0;
-       0    cos(phi)   -sin(phi);
-       0    sin(phi)    cos(phi)]; %roll
+       0    cos(phi_t)   -sin(phi_t);
+       0    sin(phi_t)    cos(phi_t)]; %roll
 
 eRt = Rz*Ry*Rx;     % the rotation matrix
     
@@ -69,18 +69,83 @@ disp(bTt);
 
 %% Define the goal frame and initialize cartesian control
 % Goal definition 
-bOg = ...
-bRg = ...
-bTg = [bRg bOg;0 0 0 1]; 
+bOg = [0.2; -0.7; 0.3]; % the translation from base to goal
+
+% for the rotation we need to redefine the angles that show rotation from
+% base to goal
+psi_g = 0;
+theta_g = 1.57;
+phi_g = 0;
+
+
+Rz = [cos(psi_g) -sin(psi_g)  0;
+      sin(psi_g) cos(psi_g)   0;
+         0        0       1];  %yaw
+
+Ry = [cos(theta_g)  0   sin(theta_g);
+          0       1       0;
+      -sin(theta_g) 0   cos(theta_g)]; %pitch
+
+Rx = [ 1       0            0;
+       0    cos(phi_g)   -sin(phi_g);
+       0    sin(phi_g)    cos(phi_g)]; %roll
+
+
+bRg = Rz * Ry * Rx;
+
+
+bTg = [bRg bOg;
+       0 0 0 1]; 
+
 disp('bTg')
 disp(bTg)
 
-% control proportional gain 
+
+%% Ex 2.1
+% we need to find the cartesian error. It is a 6x1 that has the orientation error
+% and the position error. 
+
+% The ladder is expressed as: 
+% e = xg - xe (the position of the goal - the position of the ee)
+
+n_joint = gm.jointNumber;
+bTe = gm.getTransformWrtBase(n_joint);
+
+e_position = bOg - bTe(1:3, 4);
+
+
+% since we found the position error, we need to find the orientation error
+% but to find this orentation error we have three methods. The easiest one
+% is the one that does the difference between euler angles. However this is
+% not very robust, due to the fact that it is prone to singularities. As a
+% result we will use the rotation matrix method. 
+
+Re = bTe(1:3, 1:3); % we get the rotation matrix
+
+% we extract the unit vectors that form the rotation matrices
+ne = Re(:, 1); ng = bRg(:, 1); % we get the normal vector
+se = Re(:, 2); sg = bRg(:, 2); % we get the sliding vector
+ae = Re(:, 3); ag = bRg(:, 3); % we get the approach vector
+
+% we calculate the geometric form off the orientation error
+e_orientation = 0.5 * ( cross(ne, ng) + cross(se, sg) + cross(ae, ag) );
+
+cartesian_error = [e_position; e_orientation];
+
+disp("Cartesian error: e = [e_position, e_orientation]'")
+disp(cartesian_error)
+
+
+%% control proportional gain 
 k_a = ...
 k_l = ...
 
 % Cartesian control initialization
 cc = cartesianControl(....);
+
+
+
+
 
 %% Initialize control loop 
 
