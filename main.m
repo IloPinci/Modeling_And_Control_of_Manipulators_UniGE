@@ -177,6 +177,9 @@ disp(q_dot)
 disp("q_dot1:")
 disp(q_dot1)
 
+
+%% Ex 2.4
+
 %% Initialize control loop 
 
 % Simulation variables
@@ -215,6 +218,7 @@ for i = t
     % Compute desired joint velocities 
     q_dot = pinv(J) * x_dot;
 
+
     % simulating the robot
     q = KinematicSimulation(q, q_dot, dt, qmin, qmax);
     
@@ -228,3 +232,32 @@ for i = t
 end
 
 pm.plotFinalConfig(gm);
+
+
+
+%% Ex 2.5 End-effector and tool velocities (wrt base, expressed in base)
+
+% End-effector velocity
+J = km.getJacobianOfJointWrtBase(n_joint);
+x_dot_e = J * q_dot;
+
+v_e     = x_dot_e(1:3);
+omega_e = x_dot_e(4:6);
+
+% Vector from EE to tool expressed in base
+bTe = gm.getTransformWrtBase(n_joint);
+bRe = bTe(1:3,1:3);
+b_r_et = bRe * e_r_te;
+
+% Tool velocity
+omega_t = omega_e;
+v_t     = v_e + cross(omega_e, b_r_et);
+
+x_dot_t = [v_t; omega_t];
+
+disp("End-effector velocity [v; omega] (base frame):")
+disp(x_dot_e)
+
+disp("Tool velocity [v; omega] (base frame):")
+disp(x_dot_t)
+
