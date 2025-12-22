@@ -122,9 +122,21 @@ e_position = bOg - bTe(1:3, 4);
 
 Re = bTe(1:3, 1:3); % we get the rotation matrix
 
-% we extract the un
+% we extract the unit vectors that form the rotation matrices
+ne = Re(:, 1); ng = bRg(:, 1); % we get the normal vector
+se = Re(:, 2); sg = bRg(:, 2); % we get the sliding vector
+ae = Re(:, 3); ag = bRg(:, 3); % we get the approach vector
+
+% we calculate the geometric form off the orientation error
+e_orientation = 0.5 * ( cross(ne, ng) + cross(se, sg) + cross(ae, ag) );
+
+cartesian_error = [e_position; e_orientation];
+
+disp("Cartesian error: e = [e_position, e_orientation]'")
+disp(cartesian_error)
 
 
+%% Ex 
 %% control proportional gain 
 k_a = ...
 k_l = ...

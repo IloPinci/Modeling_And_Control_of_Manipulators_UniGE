@@ -136,12 +136,26 @@ disp("Cartesian error: e = [e_position, e_orientation]'")
 disp(cartesian_error)
 
 
-%% control proportional gain 
-k_a = ...
-k_l = ...
+%% Ex 2.2
+
+% control proportional gain
+k_a = 0.8;
+k_l = 0.8;
 
 % Cartesian control initialization
-cc = cartesianControl(....);
+cc = cartesianControl(gm, k_a, k_l);
+
+% usage of the cc
+result = cc.getCartesianReference(bTg);
+
+desired_linear  = result(1:3);
+desired_angular = result(4:6);
+
+disp("Desired angular velocity:")
+disp(desired_angular)
+
+disp("Desired linear velocity:")
+disp(desired_linear)
 
 
 
