@@ -1,3 +1,4 @@
+function q = KinematicSimulation(q, q_dot, ts, q_min, q_max)
 %% Kinematic Simulation function
 %
 % Inputs
@@ -9,5 +10,10 @@
 %
 % Outputs
 % - q new joint configuration
+
+    q = q + ts * q_dot;
+
+    % we enforce the joint limits
+    q = min(max(q, q_min), q_max);
 
 end

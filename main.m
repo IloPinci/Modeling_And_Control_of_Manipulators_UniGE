@@ -203,17 +203,20 @@ pm.initMotionPlot(t, bTg(1:3,4));
 %%%%%%% Kinematic Simulation %%%%%%%
 for i = t
     % Updating transformation matrices for the new configuration 
+    gm.updateDirectGeometry(q);
 
     % Get the cartesian error given an input goal frame
+    x_dot = cc.getCartesianReference(bTg);
 
     % Update the jacobian matrix of the given model
+    J = km.getJacobianOfJointWrtBase(gm.jointNumber);
 
     %% INVERSE KINEMATICS
     % Compute desired joint velocities 
-    q_dot = ...
+    q_dot = pinv(J) * x_dot;
 
     % simulating the robot
-    q = KinematicSimulation(....);
+    q = KinematicSimulation(q, q_dot, dt, qmin, qmax);
     
     pm.plotIter(gm, km, i, q_dot);
 
