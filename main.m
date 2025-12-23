@@ -213,6 +213,7 @@ for i = t
 
     % Update the jacobian matrix of the given model
     J = km.getJacobianOfJointWrtBase(gm.jointNumber);
+    km.J = J;
 
     %% INVERSE KINEMATICS
     % Compute desired joint velocities 
