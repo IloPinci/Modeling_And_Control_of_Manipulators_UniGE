@@ -104,9 +104,8 @@ classdef geometricModel < handle
             % tool
 
             %TO DO
-            n_joints = self.jointNumber;
 
-            b_T_e = self.getTransformWrtBase(n_joints); % we get the transform from base to ee
+            b_T_e = self.getTransformWrtBase(self.jointNumber); % we get the transform from base to ee
             bTt = b_T_e * self.eTt;  % then we multiply with the transform from ee to tool:  0Te * eTt = 0Tt
          end
 

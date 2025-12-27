@@ -34,19 +34,38 @@ classdef cartesianControl < handle
 
             % we need to compute again the error since it is a function
             n_joint = self.gm.jointNumber;
-            bTe = self.gm.getTransformWrtBase(n_joint);
-        
-            e_pos = bTg(1:3, 4) - bTe(1:3, 4); %position error
 
-            Re = bTe(1:3, 1:3); %rotation matrices
+            %% for the end effector
+            % bTe = self.gm.getTransformWrtBase(n_joint);
+            % 
+            % e_pos = bTg(1:3, 4) - bTe(1:3, 4); %position error
+            % 
+            % Re = bTe(1:3, 1:3); %rotation matrices
+            % Rg = bTg(1:3, 1:3);
+            % 
+            % ne = Re(:,1); ng = Rg(:, 1);    % unit vectors x
+            % se = Re(:,2); sg = Rg(:, 2);    % unit vectors y
+            % ae = Re(:,3); ag = Rg(:, 3);    % unit vectors z
+
+            % e_orient = 0.5 * (cross(ne, ng) + cross(se, sg) + cross(ae, ag)); % rotation error
+
+
+            %% for the tool
+            bTt = self.gm.getToolTransformWrtBase(); 
+    
+            e_pos = bTg(1:3, 4) - bTt(1:3, 4); 
+
+            Rt = bTt(1:3, 1:3);
             Rg = bTg(1:3, 1:3);
 
-            ne = Re(:,1); ng = Rg(:, 1);    % unit vectors x
-            se = Re(:,2); sg = Rg(:, 2);    % unit vectors y
-            ae = Re(:,3); ag = Rg(:, 3);    % unit vectors z
+            nt = Rt(:,1); ng = Rg(:, 1); 
+            st = Rt(:,2); sg = Rg(:, 2);
+            at = Rt(:,3); ag = Rg(:, 3);
 
-            e_orient = 0.5 * (cross(ne, ng) + cross(se, sg) + cross(ae, ag)); % rotation error
-
+            e_orient = 0.5 * (cross(nt, ng) + cross(st, sg) + cross(at, ag));
+            
+            %% Common for the others
+            
             desired_angular = K_A * e_orient;
             desired_linear = K_L * e_pos;
 
