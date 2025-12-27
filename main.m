@@ -36,15 +36,10 @@ Rx = [ 1       0            0;
 
 eRt = Rz*Ry*Rx;     % the rotation matrix
 
-
-
 e_r_te = [0.3; 0.1; 0]; %translation vector  
-
 
 eTt = [eRt,   e_r_te;
        0 0 0     1   ]; % the final transformation matrix
-
-
 
 
 %% Initialize Geometric Model (GM) and Kinematic Model (KM)
@@ -66,9 +61,6 @@ disp('bTt q = 0');
 disp(bTt);
 
 
-
-
-
 %% Define the goal frame and initialize cartesian control
 % Goal definition 
 bOg = [0.2; -0.7; 0.3]; % the translation from base to goal
@@ -79,7 +71,6 @@ n_joint = gm.jointNumber;
 psi_g = 0;
 theta_g = 1.57;
 phi_g = 0;
-
 
 Rz = [cos(psi_g) -sin(psi_g)  0;
       sin(psi_g) cos(psi_g)   0;
@@ -93,9 +84,7 @@ Rx = [ 1       0            0;
        0    cos(phi_g)   -sin(phi_g);
        0    sin(phi_g)    cos(phi_g)]; %roll
 
-
 bRg = Rz * Ry * Rx;
-
 
 bTg = [bRg bOg;
        0 0 0 1]; 
@@ -104,67 +93,27 @@ disp('bTg')
 disp(bTg)
 
 
-%% Ex 2.1 Cartesian error for the end effector to the goal
+%% Ex 2.1 Cartesian error for the tool to the goal
 
-
-% % we need to find the cartesian error. It is a 6x1 that has the orientation error
-% % and the position error. 
-% 
-% % The ladder is expressed as: 
-% % e = xg - xe (the position of the goal - the position of the ee)
-% 
-% n_joint = gm.jointNumber;
-% bTe = gm.getTransformWrtBase(n_joint);
-% 
-% e_position = bOg - bTe(1:3, 4);
-% 
-% 
-% % since we found the position error, we need to find the orientation error
-% % but to find this orentation error we have three methods. The easiest one
-% % is the one that does the difference between euler angles. However this is
-% % not very robust, due to the fact that it is prone to singularities. As a
-% % result we will use the rotation matrix method. 
-% 
-% Re = bTe(1:3, 1:3); % we get the rotation matrix
-% 
-% % we extract the unit vectors that form the rotation matrices
-% ne = Re(:, 1); ng = bRg(:, 1); % we get the normal vector
-% se = Re(:, 2); sg = bRg(:, 2); % we get the sliding vector
-% ae = Re(:, 3); ag = bRg(:, 3); % we get the approach vector
-% 
-% % we calculate the geometric form off the orientation error
-% e_orientation = 0.5 * ( cross(ne, ng) + cross(se, sg) + cross(ae, ag) );
-% 
-% cartesian_error = [e_position; e_orientation];
-% 
-% disp("Cartesian error of the end effector: e = [e_position, e_orientation]'")
-% disp(cartesian_error)
-
-
-
-
-% we do the cartesian error from the tool to the goal
-bTt = gm.getToolTransformWrtBase();  % tool not the end effector
+bTt = gm.getToolTransformWrtBase();  % tool frame
 
 e_position = bOg - bTt(1:3, 4); % error of the tool position
 
 % orientation error
 Rt = bTt(1:3, 1:3);
-nt = Rt(:, 1); ng = bRg(:, 1);
-st = Rt(:, 2); sg = bRg(:, 2);
-at = Rt(:, 3); ag = bRg(:, 3);
+nt = Rt(:, 1); ng = bRg(:, 1);      % we get the normal vector
+st = Rt(:, 2); sg = bRg(:, 2);      % we get the sliding vector
+at = Rt(:, 3); ag = bRg(:, 3);      % we get the approaching vector
 
 e_orientation = 0.5 * (cross(nt, ng) + cross(st, sg) + cross(at, ag));
+
 cartesian_error = [e_position; e_orientation];
 
 disp("Cartesian error of the tool: e = [e_position, e_orientation]'")
 disp(cartesian_error)
 
 
-
-
-
-%% Ex 2.2 Desired angular the linear velocities
+%% Ex 2.2 Desired angular and linear velocities
 
 % control proportional gain
 k_a = 0.8;
@@ -186,30 +135,24 @@ disp("Desired linear velocity:")
 disp(desired_linear)
 
 
-
 %% Ex 2.3 Compute the desired joint velocities
 
-% we chose to do it with the minimum norm solution to inverse kinematic
-% problem
-J = km.getJacobianOfJointWrtBase(gm.jointNumber);
+% We use the TOOL Jacobian for control (since we want to control the tool)
+J_tool = km.getJacobianOfToolWrtBase();
 
-% we do it with two methods. One is the pseudo inverse of matlab. The
-% second is the right pseudoinverse done manually
-q_dot = pinv(J) * [desired_linear; desired_angular];
+% Minimum norm solution using pseudoinverse
+q_dot = pinv(J_tool) * [desired_linear; desired_angular];
 
 disp("q_dot:")
 disp(q_dot)
 
 
-
-%% Ex 2.4
-
-%% Initialize control loop 
+%% Ex 2.4 Initialize control loop 
 
 % Simulation variables
-samples = 50;
+samples = 100;
 t_start = 0.0;
-t_end = 5.0;
+t_end = 10.0;
 dt = (t_end-t_start)/samples;
 t = t_start:dt:t_end; 
 
@@ -235,14 +178,13 @@ for i = t
     % Get the cartesian error given an input goal frame
     x_dot = cc.getCartesianReference(bTg);
 
-    % Update the jacobian matrix of the given model
-    J = km.getJacobianOfJointWrtBase(gm.jointNumber);
+    % Update the Jacobian matrix of the tool (for control)
+    J = km.getJacobianOfToolWrtBase();
     km.J = J;
 
     %% INVERSE KINEMATICS
     % Compute desired joint velocities 
     q_dot = pinv(J) * x_dot;
-
 
     % simulating the robot
     q = KinematicSimulation(q, q_dot, dt, qmin, qmax);
@@ -253,36 +195,44 @@ for i = t
         disp('Reached Requested Pose')
         break
     end
-
 end
 
 pm.plotFinalConfig(gm);
 
 
-
 %% Ex 2.5 End-effector and tool velocities (wrt base, expressed in base)
 
-% End-effector velocity
-J = km.getJacobianOfJointWrtBase(n_joint);
-x_dot_e = J * q_dot;
+% End-effector velocity using END-EFFECTOR Jacobian
+J_ee = km.getJacobianOfEndEffectorWrtBase();
+x_dot_e = J_ee * q_dot;
 
 v_e     = x_dot_e(1:3);
 omega_e = x_dot_e(4:6);
 
+% Tool velocity - Method 1: Using rigid body velocity transformation
 % Vector from EE to tool expressed in base
 bTe = gm.getTransformWrtBase(n_joint);
 bRe = bTe(1:3,1:3);
 b_r_et = bRe * e_r_te;
 
-% Tool velocity
-omega_t = omega_e;
-v_t     = v_e + cross(omega_e, b_r_et);
+% Tool velocity computed from end-effector velocity
+omega_t = omega_e;  % Angular velocity is the same (rigid connection)
+v_t     = v_e + cross(omega_e, b_r_et);  % Linear velocity at tool point
 
-x_dot_t = [v_t; omega_t];
+x_dot_t_method1 = [v_t; omega_t];
+
+% Tool velocity - Method 2: Using TOOL Jacobian directly (verification)
+J_tool = km.getJacobianOfToolWrtBase();
+x_dot_t_method2 = J_tool * q_dot;
 
 disp("End-effector velocity [v; omega] (base frame):")
 disp(x_dot_e)
 
-disp("Tool velocity [v; omega] (base frame):")
-disp(x_dot_t)
+disp("Tool velocity [v; omega] (base frame) - Method 1 (from EE):")
+disp(x_dot_t_method1)
 
+disp("Tool velocity [v; omega] (base frame) - Method 2 (direct Jacobian):")
+disp(x_dot_t_method2)
+
+disp("Difference between two methods (should be ~0):")
+disp(norm(x_dot_t_method1 - x_dot_t_method2))
