@@ -32,13 +32,12 @@ classdef cartesianControl < handle
             K_A = self.k_a * eye(3);
             K_L = self.k_l * eye(3);
 
-            % we need to compute again the error since it is a function
-            n_joint = self.gm.jointNumber;
-
-            %% for the end effector
+          
+             %% for the end effector
+            % n_joint = self.gm.jointNumber;
             % bTe = self.gm.getTransformWrtBase(n_joint);
             % 
-            % e_pos = bTg(1:3, 4) - bTe(1:3, 4); %position error
+            % err_pos = bTg(1:3, 4) - bTe(1:3, 4); %position error
             % 
             % Re = bTe(1:3, 1:3); %rotation matrices
             % Rg = bTg(1:3, 1:3);
@@ -47,27 +46,44 @@ classdef cartesianControl < handle
             % se = Re(:,2); sg = Rg(:, 2);    % unit vectors y
             % ae = Re(:,3); ag = Rg(:, 3);    % unit vectors z
 
-            % e_orient = 0.5 * (cross(ne, ng) + cross(se, sg) + cross(ae, ag)); % rotation error
+            % error_orientation = 0.5 * (cross(ne, ng) + cross(se, sg) + cross(ae, ag)); % rotation error
 
 
             %% for the tool
-            bTt = self.gm.getToolTransformWrtBase(); 
+            bTt = self.gm.getToolTransformWrtBase(); % get tool frame wrt base
     
-            e_pos = bTg(1:3, 4) - bTt(1:3, 4); 
+            err_pos = bTg(1:3, 4) - bTt(1:3, 4); % position (linear) error
 
-            Rt = bTt(1:3, 1:3);
-            Rg = bTg(1:3, 1:3);
-
-            nt = Rt(:,1); ng = Rg(:, 1); 
-            st = Rt(:,2); sg = Rg(:, 2);
-            at = Rt(:,3); ag = Rg(:, 3);
-
-            e_orient = 0.5 * (cross(nt, ng) + cross(st, sg) + cross(at, ag));
+            %% Siciliano method - It is unstable in and around 180 degrees
+            % nt = bRt(:,1); ng = bRg(:, 1); 
+            % st = bRt(:,2); sg = bRg(:, 2);
+            % at = bRt(:,3); ag = bRg(:, 3);
+            % 
+            % error_orientation = 0.5 * (cross(nt, ng) + cross(st, sg) + cross(at, ag));
             
+            
+            %% Angle Axis Method
+            bRt = bTt(1:3, 1:3);    % rotation from base to tool
+            bRg = bTg(1:3, 1:3);    % rotation from base to goal
+
+            tRb = bRt';     % rotation from tool to base
+            tRg = tRb * bRg;    % rotation from tool to goal
+
+            % convert to the angle axis representation
+            [h, theta] = RotToAngleAxis(tRg);
+
+            % angular error in tool frame
+            t_error_orientation = theta * h;
+
+            % project to angular error of the tool in the base frame
+            error_orientation = bRt * t_error_orientation;
+
+
             %% Common for the others
             
-            desired_angular = K_A * e_orient;
-            desired_linear = K_L * e_pos;
+            % compute the desired velocities 
+            desired_angular = K_A * error_orientation;
+            desired_linear = K_L * err_pos;
 
             x_dot = [desired_linear; desired_angular];
         end
