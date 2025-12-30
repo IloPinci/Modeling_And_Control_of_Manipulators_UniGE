@@ -150,9 +150,9 @@ disp(q_dot)
 %% Ex 2.4 Initialize control loop 
 
 % Simulation variables
-samples = 100;
+samples = 50;
 t_start = 0.0;
-t_end = 10.0;
+t_end = 15.0;
 dt = (t_end-t_start)/samples;
 t = t_start:dt:t_end; 
 
@@ -193,6 +193,7 @@ for i = t
 
     if(norm(x_dot(1:3)) < 0.01 && norm(x_dot(4:6)) < 0.01)
         disp('Reached Requested Pose')
+        disp(' ')
         break
     end
 end
