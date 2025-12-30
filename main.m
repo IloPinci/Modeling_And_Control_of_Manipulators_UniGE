@@ -94,35 +94,65 @@ disp(bTg)
 
 
 %% Ex 2.1 Cartesian error for the tool to the goal
+disp("------------EX 2.1-----------------")
 
 bTt = gm.getToolTransformWrtBase();  % tool frame
 
-e_position = bOg - bTt(1:3, 4); % error of the tool position
+error_position = bOg - bTt(1:3, 4); % error of the tool position
 
-% orientation error
+% orientation error with siciliano method
 Rt = bTt(1:3, 1:3);
 nt = Rt(:, 1); ng = bRg(:, 1);      % we get the normal vector
 st = Rt(:, 2); sg = bRg(:, 2);      % we get the sliding vector
 at = Rt(:, 3); ag = bRg(:, 3);      % we get the approaching vector
 
-e_orientation = 0.5 * (cross(nt, ng) + cross(st, sg) + cross(at, ag));
+error_orientation1 = 0.5 * (cross(nt, ng) + cross(st, sg) + cross(at, ag));
 
-cartesian_error = [e_position; e_orientation];
 
-disp("Cartesian error of the tool: e = [e_position, e_orientation]'")
-disp(cartesian_error)
+% Angle Axis method
+bRt = bTt(1:3, 1:3);    % rotation from base to tool
+bRg = bTg(1:3, 1:3);    % rotation from base to goal
+
+tRb = bRt';         % rotation from tool to base
+tRg = tRb * bRg;    % rotation from tool to goal
+
+% convert to the angle axis representation
+[h, theta] = RotToAngleAxis(tRg);
+
+% angular error in tool frame
+t_error_orientation = theta * h;
+
+% project to angular error of the tool in the base frame
+error_orientation2 = bRt * t_error_orientation;
+
+
+cartesian_error1 = [error_position; error_orientation1];
+cartesian_error2 = [error_position; error_orientation2];
+
+disp("Siciliano: Cartesian error of the tool: e = [e_position, e_orientation]'")
+disp(cartesian_error1)
+
+disp("Angle-Axis: Cartesian error of the tool: e = [e_position, e_orientation]'")
+disp(cartesian_error2)
+
+disp("The difference:")
+disp(cartesian_error1 - cartesian_error2)
+
+
 
 
 %% Ex 2.2 Desired angular and linear velocities
+disp("------------EX 2.2-----------------")
 
 % control proportional gain
 k_a = 0.8;
 k_l = 0.8;
 
-% Cartesian control initialization
+% Cartesian control initialization. It uses the angle-axis method because
+% it is better at handling singularites (the degree approaches 180)
 cc = cartesianControl(gm, k_a, k_l);
 
-% usage of the cc
+% usage of the cc 
 result = cc.getCartesianReference(bTg);
 
 desired_linear  = result(1:3);
@@ -135,22 +165,47 @@ disp("Desired linear velocity:")
 disp(desired_linear)
 
 
+
+
+
 %% Ex 2.3 Compute the desired joint velocities
+disp("------------EX 2.3-----------------")
 
 % We use the TOOL Jacobian for control (since we want to control the tool)
 J_tool = km.getJacobianOfToolWrtBase();
 
-% Minimum norm solution using pseudoinverse
-q_dot = pinv(J_tool) * [desired_linear; desired_angular];
 
-disp("q_dot:")
+
+% Minimum norm solution using pseudoinverse
+q_dot1 = pinv(J_tool) * [desired_linear; desired_angular];
+
+
+% We use damped SVD to get rid of velocity jerks when velocities approach 0
+landa = 0.01;
+% Damped pseudoinverse: J# = J' * (J*J' + lambda^2*I)^-1
+J_damped_pseudoInv = J_tool' / (J_tool * J_tool' + landa^2 * eye(6)); % here we didnt use inv() but / bc the latter is better
+q_dot = J_damped_pseudoInv * [desired_linear; desired_angular];
+
+
+
+disp("MatLab pseudoinverse: q_dot:")
 disp(q_dot)
+
+disp("Psudoinverse using damped SVD: q_dot:")
+disp(q_dot1)
+
+disp("Difference:")
+disp(q_dot1 - q_dot)
+
+
+
 
 
 %% Ex 2.4 Initialize control loop 
+disp("------------EX 2.4-----------------")
 
 % Simulation variables
-samples = 50;
+samples = 100;
 t_start = 0.0;
 t_end = 15.0;
 dt = (t_end-t_start)/samples;
@@ -183,8 +238,9 @@ for i = t
     km.J = J;
 
     %% INVERSE KINEMATICS
-    % Compute desired joint velocities 
+    % Compute desired joint velocities with matlab pseudo inverse
     q_dot = pinv(J) * x_dot;
+
 
     % simulating the robot
     q = KinematicSimulation(q, q_dot, dt, qmin, qmax);
@@ -201,7 +257,12 @@ end
 pm.plotFinalConfig(gm);
 
 
+
+
+
+
 %% Ex 2.5 End-effector and tool velocities (wrt base, expressed in base)
+disp("------------EX 2.2-----------------")
 
 % End-effector velocity using END-EFFECTOR Jacobian
 J_ee = km.getJacobianOfEndEffectorWrtBase();
@@ -222,9 +283,15 @@ v_t     = v_e + cross(omega_e, b_r_et);  % Linear velocity at tool point
 
 x_dot_t_method1 = [v_t; omega_t];
 
+
+
+
 % Tool velocity - Method 2: Using TOOL Jacobian directly (verification)
 J_tool = km.getJacobianOfToolWrtBase();
 x_dot_t_method2 = J_tool * q_dot;
+
+
+
 
 disp("End-effector velocity [v; omega] (base frame):")
 disp(x_dot_e)
